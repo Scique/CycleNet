@@ -17,17 +17,23 @@ float gx, gy, gz;
 float t;
 const float g = 9.81;
 bool fallen = false;
+bool assistance = false;
+bool buttonPressed = false;
+byte assistanceTimer = 0;
+// In the case that the individual has fallen over
+bool emergencyMode = false;
 // Store the thresholds - orientation threshold is if not upright so + and - in that direction compared to upright
-byte thresholds[] = {0.5 * g, 1.5 * g, 40};
+byte thresholds[] = {0.5 * g, g, 40};
 // Whether the thresholds have been passed
 bool testThreshold[] = {false, false, false};
 // Counts the amount of time passed since the threshold of that number has been passed
 byte thresholdBreakCount[] = {0, 0, 0};
 
-
+/*
 // SIM 800L - (RX, TX)
 Sim800L GSM(3, 2);
 int day,month,year,minute,second,hour;
+*/
 
 /*
 Wiring reference: 
@@ -39,72 +45,10 @@ RX: 3(PWM)
 
 - NEO 6M GPS Module
 
+
 - Button
-
+PWM: 2
 */
-
-
-// Setup - runs once when Arduino is booted
-void setup() {
-    // Begin serial data transmission
-    Serial.begin(9600);
-    Serial.println("Serial has begun");
-    Wire.begin();
-
-    
-    // Setup GY-521
-    accel.wakeup();
-    accel.setAccelSensitivity(0);  //  2g
-    accel.setGyroSensitivity(0);   //  250 degrees/s
-    accel.setThrottle(false);
-    // Set all calibration errors to zero
-	// Overwrites the values of axe aye aze gxe gye gze
-	Serial.println("Accelerometer will begin calibration - please do not move until instructed that the accelerometer is calibrated. ");
-    accel.calibrate(100);
-	Serial.println("Accelerometer calibration complete. ");
-    
-
-    /*
-    // Setup SIM800L GSM
-    GSM.begin(9600);
-    // Full functionality(mode 1)
-    if (!GSM.setFunctionalityMode(1)) {
-        Serial.println("Full functionality");
-    }
-    else {
-        Serial.println("Error");
-    }
-    Serial.print("Functionality mode: ");
-    Serial.println(GSM.getFunctionalityMode());
-    delay(1000);
-
-    Serial.println("GET PRODUCT INFO: ");
-    Serial.println(GSM.getProductInfo());
-
-    Serial.println("GET OPERATORS LIST: ");
-    Serial.println(GSM.getOperatorsList());
-
-    Serial.println("GET OPERATOR: ");
-    Serial.println(GSM.getOperator());
-    */
-
-}
-
-// Loop - self explanatory after the execution of the setup
-void loop() {
-    if (fallen) {
-		// Do something about them falling
-	}
-	else {
-		checkFall();
-	}
-	delay(100);
-
-	// POST location to server
-    
-}
-
-
 
 
 // Functions
@@ -165,14 +109,17 @@ static void checkFall() {
 	// Check if 2nd threshold testing and check for 3rd threshold conditions
 	if (testThreshold[1]){
 		thresholdBreakCount[1]++;
-		// If the orientation angle has changed more than 100 degrees and t2 has been longer than 0.5 - enable testing for t3
-		if (orientationChange >= thresholds[2] && thresholdBreakCount[1] > 5) {
+		// If the orientation angle has changed more than 100 degrees and t2 has been longer than 1 - enable testing for t3
+		if (orientationChange >= thresholds[2] && thresholdBreakCount[1] > 10) {
 			testThreshold[2] = true;
 			Serial.println("Threshold 3 testing begun");
 			Serial.println(orientationChange);
+			testThreshold[1] = false;
+			thresholdBreakCount[1] = 0;
 		}
-		// If t2 has not been broken longer than 0.5s and the required condiitons for t2 are not met - no fall
+		// If t2 has not been broken longer than 1s and the required condiitons for t2 are not met - no fall
 		else if (am <= thresholds[1]) {
+			Serial.println("Threshold 3 not passed - not a fall");
 			testThreshold[1] = false;
 			thresholdBreakCount[1] = 0;
 		}
@@ -181,23 +128,126 @@ static void checkFall() {
 	// Check if 1st threshold testing and check for 2nd threshold conditions
 	if (testThreshold[0]) {
 		thresholdBreakCount[0]++;
-		// If required conditions and if t1 has been broken for longer than 0.5s - enable t2
-		if (am >= thresholds[1] && thresholdBreakCount[0] > 5){
+		// If required conditions and if t1 has been broken for longer than 1s - enable t2
+		if (am >= thresholds[1] && thresholdBreakCount[0] > 10){
 			testThreshold[1] = true;
 			Serial.println("Threshold 2 testing begun");
-			Serial.println(am);
+			testThreshold[0] = false;
+			thresholdBreakCount[0] = 0;
 		}
-		// If t1 has not been broken longer than 0.5s and the required condiitons for t2 are not met - no fall
+		// If t1 has not been broken longer than 1s and the required condiitons for t2 are not met - no fall
 		else if (am <= thresholds[0]) {
+			Serial.println("Threshold 2 not passed - not a fall");
 			testThreshold[0] = false;
 			thresholdBreakCount[0] = 0;
 		}
 	}
 
 	// Check for 1st threshold - skip checking if 2nd threshold alr passed
-	if (am >= thresholds[0] && !testThreshold[1]) {
+	if (am >= thresholds[0] && !testThreshold[1] && !testThreshold[0]) {
 		testThreshold[0] = true;
 		Serial.println("Threshold 1 testing begun");
-		Serial.println(am);
+	}
+    Serial.println(am);
+}
+
+
+static void assistanceNeeded(){
+	assistanceTimer++;
+	// Check if the button is pressed
+	buttonPressed = digitalRead(2);
+	// If they don't say that they're okay with the button within one minute
+	if (assistanceTimer > 600) {
+		emergencyMode = true;
 	}
 }
+
+
+
+// Setup - runs once when Arduino is booted
+void setup() {
+    // Begin serial data transmission
+    Serial.begin(9600);
+    Serial.println("Serial has begun");
+    Wire.begin();
+
+    
+    // Setup GY-521
+	Serial.print("Accel is connected: ");
+	Serial.println(accel.isConnected());
+	if (accel.wakeup()) {
+		Serial.println("Sensor successfully connected");
+	}
+	else {
+		Serial.println("Could not connect to GY521 module - check connection");
+	}
+    accel.setAccelSensitivity(0);  //  2g
+    accel.setGyroSensitivity(0);   //  250 degrees/s
+    accel.setThrottle(false);
+    // Set all calibration errors to zero
+	// Overwrites the values of axe aye aze gxe gye gze
+	Serial.println("Accelerometer will begin calibration - please do not move until instructed that the accelerometer is calibrated. ");
+    accel.calibrate(100);
+	Serial.println("Accelerometer calibration complete. ");
+
+
+	// Button setup
+	pinMode(2, INPUT);
+    
+
+    /*
+    // Setup SIM800L GSM
+    GSM.begin(9600);
+    // Full functionality(mode 1)
+    if (!GSM.setFunctionalityMode(1)) {
+        Serial.println("Full functionality");
+    }
+    else {
+        Serial.println("Error");
+    }
+    Serial.print("Functionality mode: ");
+    Serial.println(GSM.getFunctionalityMode());
+    delay(1000);
+
+    Serial.println("GET PRODUCT INFO: ");
+    Serial.println(GSM.getProductInfo());
+
+    Serial.println("GET OPERATORS LIST: ");
+    Serial.println(GSM.getOperatorsList());
+
+    Serial.println("GET OPERATOR: ");
+    Serial.println(GSM.getOperator());
+    */
+
+}
+
+// Loop - self explanatory after the execution of the setup
+void loop() {
+	// In the event that the user has fallen and is in need of assistance
+	if (emergencyMode) {
+		if (emergencyMode) {
+			Serial.println("--EMERGENCY--");
+			Serial.println("Continually transmitting location information");
+		}
+	} 
+	else {
+		if (fallen && !buttonPressed) {
+		// Do something about them falling
+        Serial.println("Nigga");
+		assistanceNeeded();
+		}
+		else {
+			Serial.println("Normal");
+			checkFall();
+		}
+		delay(100);
+	}
+
+	// Send location to server
+	
+    
+}
+
+
+
+
