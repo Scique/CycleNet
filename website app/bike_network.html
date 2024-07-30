@@ -49,22 +49,27 @@
         // Initialize marker with custom icon at the starting point
         var marker = L.marker([51.505, -0.09], { icon: customIcon }).addTo(map);
 
+
+
         // Function to update the bicycle display table
         // Still pretty half baked and hard coded as it is a prototype
         // Can improve it to be modular in the future if ever used in a real application
-        function updateTable(dataResponse) {
+        function updateTable(currentResponse) {
+            // Get the table values
             let field = document.getElementById("bike0");
             let bikeID = document.getElementById("bikeID");
             let bikeStatus = document.getElementById("bikeStatus");
             let bikeLocation = document.getElementById("bikeLocation");
 
-            bikeID.innerText = dataResponse.bikeID;
-            if (!dataResponse.bikeStatus) {
+            // Update the table with the current values
+            bikeID.innerText = currentResponse.bikeID;
+            // Condition on whether or not the user requires assistance
+            if (!currentResponse.bikeStatus) {
                 bikeStatus.innerText = "No Problems";
                 field.setAttribute("backgrouond-color", "white")
             }
             else {
-                bikeStatus.innerText = "User has fallen - REQUIRES ASSISTANCE";
+                bikeStatus.innerText = "USER REQUIRES ASSISTANCE";
                 field.setAttribute("background-color", "red");
             }
         }
@@ -74,21 +79,27 @@
         function updateMarker() {
             // Fetch the latitude and longitude from the server
             // Prototype for now - real = should be modular and display for all bikes
-            let response = fetch("http://127.0.0.1:5000/get_data/?bikeID=0").response.json();
+            let allresponse = fetch("https://backend-nekansppvq-an.a.run.app/get_data/?bikeID=0").response.json();
+
+            // Get the latest response from all the responses
+            let response = allresponse[-1];
+
             // Set the new lat and long values
             let newLatLng = new L.LatLng(response.latitude, response.longitude);
             market.setLatLng(newLatLng);
             map.setView(newLatLng, 2);
-            
+
+            // Calls the function to update the table at the bottom of the document
             updateTable(response);
         }
 
         // Update marker every 5 seconds
         setInterval(updateMarker, 5000);
 
+        
         // Make the bicycles inside the bicycle table
+        // Use in the future for adding elements to the table
         var bicycleTableBody = document.getElementById("bicycle_tbody");
-
 
     </script>
     <!-- Display the bicycles with a table-->
@@ -99,7 +110,7 @@
                 <tr>
                     <th>Bicycle ID</th>
                     <!-- Bicycle status should display fallen or not -->
-                    <th>Bicycle Status</th>
+                    <th>Status</th>
                     <!-- Longitutde and latitude in case the user wants to know -->
                     <th>Longitude and Latitude</th>
                 </tr>
@@ -114,12 +125,14 @@
                 </tr>
             </tbody>
         </table>
+        <!-- Add bike button - for now unfuncitonal since there is only one Arduino tracker module and it is a prototype -->
+        <button type="button" class="btn btn-outline-primary">Add a bicycle</button>
     </div>
 
 
     <!-- Attribution for icons and stuff -->
     <div tag = "attributes">
-        <a href="https://www.flaticon.com/free-icons/cycling" title="cycling icons">Cycling icon created by kumakamu - Flaticon</a>
+        <a href="https://www.flaticon.com/free-icons/cycling" title="cycling icons" styles="padding:4px;">Cycling icon created by kumakamu - Flaticon</a>
     </div>
     
     

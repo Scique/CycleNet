@@ -6,6 +6,9 @@
 #include <map>
 #include <cmath>
 #include <array>
+#include "arduino_secrets.h"
+#include "WiFiS3.h"
+
 
 // Create variables to use
 
@@ -30,9 +33,16 @@ byte thresholds[] = {0.5 * g, g, 40};
 bool testThreshold[] = {false, false, false};
 // Counts the amount of time passed since the threshold of that number has been passed
 byte thresholdBreakCount[] = {0, 0, 0};
+// Location information
+float location[] = {0.0, 0.0};
 // To send data to web server
-const char hotspot_ssid[] = "C:/Malware/Trojan/Comvirus";
-const char hotspot_password[] = "Fake_password";
+const char ssid[] = SECRET_SSID;
+const char pass[] = SECRET_PASS;
+// the WiFi radio's status
+int status = WL_IDLE_STATUS;    
+const char server[] = "https://backend-nekansppvq-an.a.run.app";
+WiFiClient client;
+
 
 // NEO 6M GPS
 // The serial connection to the GPS module
@@ -63,6 +73,55 @@ PWM: 2
 */
 
 // Functions
+
+// Connects to the wifi
+static void connectToNetwork()
+{
+	// check for the WiFi module:
+	if (WiFi.status() == WL_NO_MODULE) {
+		Serial.println("Communication with WiFi module failed!");
+	}
+
+	// Check for firmware
+	String fv = WiFi.firmwareVersion();
+	if (fv < WIFI_FIRMWARE_LATEST_VERSION) {
+		Serial.println("Please upgrade the firmware");
+	}
+
+	// attempt to connect to WiFi network:
+	while (status != WL_CONNECTED) {
+		Serial.print("Attempting to connect to WPA SSID: ");
+		Serial.println(ssid);
+		// Connect to WPA/WPA2 network:
+		status = WiFi.begin(ssid, pass);
+
+		// wait 10 seconds for connection:
+		delay(10000);
+	}
+	Serial.println("Network connection successful");
+}
+
+
+static void post_data() 
+{
+	Serial.println("Posting data");
+	// if you get a connection, report back via serial:
+	if (client.connect(server, 8080)) {
+		Serial.println("connected to server");
+		// Make a HTTP request:
+		// Because C is such a terrible language, we have to do all this just to get the link - string concatenation somehow requires the importing of a funciton and a library
+		client.print("POST /post_data/?bikeID=0&latitude=");
+		client.print(location[0]);
+		client.print("&longitude=");
+		client.print(location[1]);
+		client.print("&fallen=");
+		client.println(emergencyMode);
+		client.println("Host: www.google.com");
+		client.println("Connection: close");
+		client.println();
+  }
+}
+
 
 // Fall detection
 static void checkFall()
@@ -171,6 +230,7 @@ static void checkFall()
 	Serial.println(am);
 }
 
+// Counts the time - if they don't respond within one minute that means they need assistance
 static void assistanceNeeded()
 {
 	assistanceTimer++;
@@ -195,6 +255,10 @@ static void getLocation()
 			Serial.println(gps.location.lng(), 6);
 			Serial.print("Speed in m/s = ");
 			Serial.println(gps.speed.mps());
+
+			// Update the location in our variable
+			location[0] = gps.location.lat();
+			location[1] = gps.location.lng();
 		}
 		else
 		{
@@ -243,6 +307,11 @@ void setup()
 	// Neo 6M GPS setup
 	ss.begin(9600);
 
+	connectToNetwork();
+
+	// Wait 10 seconds for network and gps to connect
+	delay(10000);
+
 	/*
 	// Setup SIM800L GSM
 	GSM.begin(9600);
@@ -275,7 +344,7 @@ void loop()
 	if (emergencyMode)
 	{
 		Serial.println("--EMERGENCY--");
-		Serial.println("Continually transmitting location information");
+		Serial.println("Continually transmitting location information. ");
 	}
 	// Put any conditions to check when isn't emergency mode in here
 	else
@@ -283,7 +352,7 @@ void loop()
 		if (fallen && !buttonPressed)
 		{
 			// Do something about them falling
-			Serial.println("Nigga");
+			Serial.println("USER NEEDS ASSISTANCE");
 			assistanceNeeded();
 		}
 		else
@@ -295,6 +364,9 @@ void loop()
 	}
 
 	// GPS Location stuff
-	// Send to server: {""}
+	// Updates the location array -> [latitude, longitutde]
 	getLocation();
+
+	// Send the information to the web server
+	post_data();
 }

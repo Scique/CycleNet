@@ -23,10 +23,14 @@ async def noreq():
 async def postData(bikeID: int, longitude:float, latitude: float, fallen: bool):
     # Write the data to the csv file
     try:
-        with open("./data/bicycleData.csv", "a", encoding="UTF-8") as file:
-            data = {"bikeID": bikeID, "longitude": longitude, "latitude": latitude, "fallebn": fallen}
-            writer = csv.DictWriter(file, fieldnames=["bikeID", "longitude", "latitutde", "fallen"])
-            writer.writerow(data)
+        with open("./data/bicycleData.csv", "r+", encoding="UTF-8") as file:
+            reader = csv.DictReader(file, fieldnames=["bikeID", "longitude", "latitude", "fallen"])
+            oldData = [row for row in reader]
+            print(oldData)
+            oldData.append({"bikeID": bikeID, "longitude": longitude, "latitude": latitude, "fallen": fallen})
+            writer = csv.DictWriter(file, fieldnames=["bikeID", "longitude", "latitude", "fallen"])
+            print(oldData)
+            writer.writerows(oldData)
         return {"status": 201, "message": "Data upload successful. "}
     except Exception as e:
         return {"status": 422, "message": e}
@@ -37,18 +41,16 @@ async def postData(bikeID: int, longitude:float, latitude: float, fallen: bool):
 # Get the latest data for the particular bike
 # If ID not provided, will send all the data
 async def getData(bikeID: int | None = None):
-    with open("./data/bicyleData.csv", "r", encoding="UTF-8") as file:
-        reader = csv.DictReader(file, fieldnames=["bikeID", "longitude", "latitutde", "fallen"])
-        try:
-            if bikeID != None:
-                # Make sure the bikeID provided is inside the database
-                useData = [row for row in reader if row["bikeID"] == bikeID]
-            else:
-                # All data
-                useData = [row for row in reader]
+    with open("./data/bicycleData.csv", "r", encoding="UTF-8") as file:
+        reader = csv.DictReader(file, fieldnames=["bikeID", "longitude", "latitude", "fallen"])
+        if bikeID != None:
+            # Make sure the bikeID provided is inside the database
+            useData = [row for row in reader if int(row["bikeID"]) == bikeID]
+        elif bikeID == None:
+            # All data
+            useData = [row for row in reader]
             return {"status": 200, "message": "Data successfully retrieved and sent to user", "content": useData}
-        except:
-            return {"status": 404, "message": "The requested bike was not found. "}
+        return {"status": 404, "message": "The requested bike was not found. "}
             
     
     
