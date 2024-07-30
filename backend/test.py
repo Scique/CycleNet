@@ -1,13 +1,16 @@
 import csv
 
-#requests.post(url="https://backend-nekansppvq-an.a.run.app/post_data/?bikeID=0")
 bikeID=0
-latitude=12.66552778
-longitude=99.95838889
+longitude=12.322424
+latitude=13.2489234989
 fallen=False
 
-with open("./data/bicycleData.csv", "a", encoding="UTF-8") as file:
-            data = {"bikeID": bikeID, "longitude": longitude, "latitude": latitude, "fallen": fallen}
-            writer = csv.DictWriter(file, fieldnames=["bikeID", "longitude", "latitude", "fallen"])
-            writer.writerow(data)
 
+with open("./data/bicycleData.csv", "r+", encoding="UTF-8") as file:
+            reader = csv.DictReader(file, fieldnames=["bikeID", "longitude", "latitude", "fallen"])
+            oldData = [row for row in reader]
+            print(oldData)
+            oldData.append({"bikeID": bikeID, "longitude": longitude, "latitude": latitude, "fallen": fallen})
+            writer = csv.DictWriter(file, fieldnames=["bikeID", "longitude", "latitude", "fallen"])
+            print(oldData)
+            writer.writerows(oldData)

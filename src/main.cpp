@@ -3,7 +3,6 @@
 #include <Sim800L.h>
 #include <TinyGPS++.h>
 #include <SoftwareSerial.h>
-#include <map>
 #include <cmath>
 #include <array>
 #include "arduino_secrets.h"

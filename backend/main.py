@@ -22,18 +22,15 @@ async def noreq():
 @app.post("/post_data/")
 async def postData(bikeID: int, longitude:float, latitude: float, fallen: bool):
     # Write the data to the csv file
-    try:
-        with open("./data/bicycleData.csv", "r+", encoding="UTF-8") as file:
-            reader = csv.DictReader(file, fieldnames=["bikeID", "longitude", "latitude", "fallen"])
-            oldData = [row for row in reader]
-            print(oldData)
-            oldData.append({"bikeID": bikeID, "longitude": longitude, "latitude": latitude, "fallen": fallen})
-            writer = csv.DictWriter(file, fieldnames=["bikeID", "longitude", "latitude", "fallen"])
-            print(oldData)
-            writer.writerows(oldData)
-        return {"status": 201, "message": "Data upload successful. "}
-    except Exception as e:
-        return {"status": 422, "message": e}
+    with open("./data/bicycleData.csv", "r+", encoding="UTF-8") as file:
+        reader = csv.DictReader(file, fieldnames=["bikeID", "longitude", "latitude", "fallen"])
+        oldData = [row for row in reader]
+        print(oldData)
+        oldData.append({"bikeID": bikeID, "longitude": longitude, "latitude": latitude, "fallen": fallen})
+        writer = csv.DictWriter(file, fieldnames=["bikeID", "longitude", "latitude", "fallen"])
+        print(oldData)
+        writer.writerows(oldData)
+    return {"status": 201, "message": "Data upload successful. "}
     
 
 # Get location and bicycle data from the server
@@ -46,11 +43,13 @@ async def getData(bikeID: int | None = None):
         if bikeID != None:
             # Make sure the bikeID provided is inside the database
             useData = [row for row in reader if int(row["bikeID"]) == bikeID]
+            return {"status": 200, "message": "Data successfully retrieved and sent to user", "content": useData}
         elif bikeID == None:
             # All data
             useData = [row for row in reader]
             return {"status": 200, "message": "Data successfully retrieved and sent to user", "content": useData}
-        return {"status": 404, "message": "The requested bike was not found. "}
+        else:
+            return {"status": 404, "message": "The requested bike was not found. "}
             
     
     
