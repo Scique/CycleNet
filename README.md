@@ -1,12 +1,13 @@
 # CycleNet
+An innovative way to manage bicycles for tourists at hotels.
 
 
-* Description *
+*Description*
 An IoT innovation made with Arduino in order to facilitate the formation of a bicycle positioning and safety network for use in hotels in order to help make hotel bicycle renting to tourists more convienient and safe for both parties.
 This project was made specifically for use at the 2024 Huahin Youth Innovation Competition.
 
 
-* Components(Prototype) *
+*Components(Prototype)*
 All of the components listed are all used with the Arduino microprocessor as this product prototype needs to utilize an Arduino for the microprocessor as per the requisites for the competition.
 In truth, the Arduino and its modules will not be the only component that is required for this program to function. As is listed down below, you will see that there are other sections of the product that isn't Arduino.
 - Arduino Uno R4
@@ -19,6 +20,10 @@ In truth, the Arduino and its modules will not be the only component that is req
 - Bicycle Water Bottle(used for case)
 
 
-* Program Structure *
-
+*Program Structure*
+The program would best be described in 3 stages: the backend(api server", Arduino(on bicycle), and the website frontend(for hotels to manage).
+- Backend: facilitates the transfer of information from the Arduino units that would be placed on the bicycles to the hotel's manager page. 
+- Frontend: the main UI for the hotel staff. It's a simple web page that will display the information about all the bicycles in the network. The hotel is able to monitor whether or not the bicycle user requires assistance and where the current location of the bicycle is.
+- Arduino: sends information regarding location and user status(whether they need assistance or not) while also monitoring for fall detection.
+This will be the main UI for the User in which they will be able to relay if they require assistance to the hotel staff along with the safety features such as fall detection.
 
