@@ -8,7 +8,6 @@
 #include "arduino_secrets.h"
 #include "WiFiS3.h"
 
-
 // Create variables to use
 
 // GY521
@@ -38,14 +37,13 @@ float location[] = {0.0, 0.0};
 const char ssid[] = SECRET_SSID;
 const char pass[] = SECRET_PASS;
 // the WiFi radio's status
-int status = WL_IDLE_STATUS;    
+int status = WL_IDLE_STATUS;
 const char server[] = "https://backend-nekansppvq-an.a.run.app";
 WiFiClient client;
 
-
 // NEO 6M GPS
 // The serial connection to the GPS module
-SoftwareSerial ss(6, 5);
+SoftwareSerial ss(5, 6);
 TinyGPSPlus gps;
 
 /*
@@ -77,18 +75,21 @@ PWM: 2
 static void connectToNetwork()
 {
 	// check for the WiFi module:
-	if (WiFi.status() == WL_NO_MODULE) {
+	if (WiFi.status() == WL_NO_MODULE)
+	{
 		Serial.println("Communication with WiFi module failed!");
 	}
 
 	// Check for firmware
 	String fv = WiFi.firmwareVersion();
-	if (fv < WIFI_FIRMWARE_LATEST_VERSION) {
+	if (fv < WIFI_FIRMWARE_LATEST_VERSION)
+	{
 		Serial.println("Please upgrade the firmware");
 	}
 
 	// attempt to connect to WiFi network:
-	while (status != WL_CONNECTED) {
+	while (status != WL_CONNECTED)
+	{
 		Serial.print("Attempting to connect to WPA SSID: ");
 		Serial.println(ssid);
 		// Connect to WPA/WPA2 network:
@@ -100,12 +101,12 @@ static void connectToNetwork()
 	Serial.println("Network connection successful");
 }
 
-
-static void post_data() 
+static void post_data()
 {
 	Serial.println("Posting data");
 	// if you get a connection, report back via serial:
-	if (client.connect(server, 8080)) {
+	if (client.connect(server, 8080))
+	{
 		Serial.println("connected to server");
 		// Make a HTTP request:
 		// Because C is such a terrible language, we have to do all this just to get the link - string concatenation somehow requires the importing of a funciton and a library
@@ -115,12 +116,12 @@ static void post_data()
 		client.print(location[1]);
 		client.print("&fallen=");
 		client.println(emergencyMode);
-		client.println("Host: www.google.com");
+		client.println("Host: https://backend-nekansppvq-as.a.run.app");
 		client.println("Connection: close");
 		client.println();
-  }
+		client.println();
+	}
 }
-
 
 // Fall detection
 static void checkFall()
@@ -244,31 +245,34 @@ static void assistanceNeeded()
 
 static void getLocation()
 {
-	if (gps.encode(ss.read()))
+	if (ss.available() == 0)
 	{
 		if (gps.location.isValid())
 		{
-			Serial.print("Latitude: ");
-			Serial.println(gps.location.lat(), 6);
-			Serial.print("Longitude: ");
-			Serial.println(gps.location.lng(), 6);
-			Serial.print("Speed in m/s = ");
-			Serial.println(gps.speed.mps());
+			if (gps.encode(Serial.read()))
+			{
+				Serial.print("Latitude: ");
+				Serial.println(gps.location.lat(), 6);
+				Serial.print("Longitude: ");
+				Serial.println(gps.location.lng(), 6);
+				Serial.print("Speed in m/s = ");
+				Serial.println(gps.speed.mps());
 
-			// Update the location in our variable
-			location[0] = gps.location.lat();
-			location[1] = gps.location.lng();
+				// Update the location in our variable
+				location[0] = gps.location.lat();
+				location[1] = gps.location.lng();
+			}
+			else
+			{
+				Serial.println("Location: Not Available");
+			}
 		}
-		else
-		{
-			Serial.println("Location: Not Available");
+		else{
+			Serial.println("Location invalid");
 		}
-	}	
-	// If 5000 milliseconds pass and there are no characters coming in
-	// over the software serial port, show a "No GPS detected" error
-	if (millis() > 5000 && gps.charsProcessed() < 10)
-	{
-		Serial.println("No GPS detected");
+	}
+	else{
+		Serial.println("SS not available. ");
 	}
 }
 
@@ -289,7 +293,11 @@ void setup()
 	}
 	else
 	{
-		Serial.println("Could not connect to GY521 module - check connection");
+		while (!accel.wakeup())
+		{
+			Serial.println("Could not connect to GY521 module - check connection, attempting to connect");
+			accel.wakeup();
+		}
 	}
 	accel.setAccelSensitivity(0); //  2g
 	accel.setGyroSensitivity(0);  //  250 degrees/s
@@ -306,10 +314,18 @@ void setup()
 	// Neo 6M GPS setup
 	ss.begin(9600);
 
+	/*
+	// Make sure it can get the gps
+	while(!gps.location.isValid()) {
+		while(ss.available() > 0) {
+			if (gps.encode(ss.read())){
+				Serial.println("Attempting to setup GPS");
+			}
+		}
+	}
+	*/
+	Serial.println("Signal successfully collected");
 	connectToNetwork();
-
-	// Wait 10 seconds for network and gps to connect
-	delay(10000);
 
 	/*
 	// Setup SIM800L GSM
@@ -359,7 +375,6 @@ void loop()
 			Serial.println("\n\nNormal\n");
 			checkFall();
 		}
-		delay(100);
 	}
 
 	// GPS Location stuff
